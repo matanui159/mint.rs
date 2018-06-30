@@ -1,6 +1,8 @@
 [package]
-name = "mint"
+name = "mint2d"
 version = "0.1.0"
+description = "Lightweight Rust 2D game library"
+license = "Apache-2.0"
 authors = ["matanui159 <josh@minteronline.com>"]
 build = "build.rs"
 

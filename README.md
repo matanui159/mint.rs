@@ -1,2 +1,2 @@
-# mint.rs
-Lightweight Rust game library
+# mint2d.rs
+Lightweight Rust 2D game library
