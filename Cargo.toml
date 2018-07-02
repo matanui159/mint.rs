@@ -1,6 +1,6 @@
 [package]
 name = "mint2d"
-version = "0.1.0"
+version = "0.1.1"
 
 description = "Lightweight Rust 2D game library"
 readme = "README.md"
