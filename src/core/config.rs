@@ -1,24 +1,46 @@
 use ::Size;
 
+/// All the possible fullscreen configurations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Fullscreen {
+	/// Fullscreen is disabled.
 	Disabled,
+
+	/// Uses the primary monitor for fullscreen.
 	Primary,
+
+	/// Uses the monitor that matches the provided name for fullscreen.
 	Monitor(String)
 }
 
+/// The configuration options when creating a window.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
+	/// The title of the window.
 	pub title: String,
 
+	/// The initial size of the window.
 	pub size: Size,
+
+	/// The minimum size of the window.
 	pub min_size: Option<Size>,
+
+	/// The maximum size of the window.
 	pub max_size: Option<Size>,
+
+	/// Whether or not the window starts maximized.
 	pub maximized: bool,
+
+	/// Whether or not the window is resizable.
 	pub resizable: bool,
+
+	/// The fullscreen configuration.
 	pub fullscreen: Fullscreen,
 
+	/// Whether or not V-sync is enabled.
 	pub vsync: bool,
+
+	/// The MSAA amount. Must be a power of two.
 	pub msaa: u16
 }
 

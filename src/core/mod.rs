@@ -1,3 +1,5 @@
+//! Core window, context and state management.
+
 extern crate glutin;
 use self::glutin::{EventsLoop, Event, WindowEvent};
 use self::glutin::{GlWindow, GlContext, GlRequest, Api};
@@ -11,18 +13,27 @@ pub use self::config::{Fullscreen, Config};
 
 use ::Size;
 
+/// Possible errors that can occur from creating a window.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WindowError {
+	/// [`Fullscreen::Monitor`](enum.Fullscreen.html#variant.Monitor)
+	/// didn't match any monitor name.
 	UnknownMonitor,
 	InternalError(String)
 }
 
+/// A window that handles the context and state of the game.
 pub struct Window {
 	events: EventsLoop,
 	window: GlWindow
 }
 
 impl Window {
+	/// # Errors
+	/// If [`Config.fullscreen`](struct.Config.html#structfield.fullscreen)
+	/// is [`Fullscreen::Monitor`](enum.Fullscreen.html#variant.Monitor)
+	/// and it doesn't match any monitor name, this will return with
+	/// [`WindowError::UnknownMonitor`](enum.WindowError.html#variant.UnknownMonitor).
 	pub fn new(config: Config) -> Result<Window, WindowError> {
 		let events = EventsLoop::new();
 		let mut window = WindowBuilder::new()
@@ -87,6 +98,9 @@ impl Window {
 		Ok(Window {events, window})
 	}
 
+	/// Updates the window and processes all events.
+	/// Will return false if the window has been closed,
+	/// true otherwise.
 	pub fn update(&mut self) -> bool {
 		let mut result = true;
 		self.events.poll_events(|event| {
@@ -100,18 +114,21 @@ impl Window {
 		result
 	}
 
+	/// Gets the primary monitor.
 	pub fn get_primary_monitor(&self) -> Monitor {
 		Monitor {
 			monitor: self.events.get_primary_monitor()
 		}
 	}
 
+	/// Gets an iterator of all the monitors.
 	pub fn get_all_monitors(&self) -> MonitorIter {
 		MonitorIter {
 			iter: self.events.get_available_monitors()
 		}
 	}
 
+	/// Gets the current size of the window.
 	pub fn get_size(&self) -> Size {
 		self.window.get_inner_size().map_or(Size {
 			width: 0.0,
