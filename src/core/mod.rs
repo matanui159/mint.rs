@@ -3,12 +3,12 @@
 extern crate glutin;
 use self::glutin::{EventsLoop, Event, WindowEvent, ElementState};
 use self::glutin::{GlWindow, GlContext, GlRequest, Api};
-use self::glutin::{WindowBuilder, ContextBuilder};
-use self::glutin::dpi::{LogicalPosition, LogicalSize};
+use self::glutin::{WindowBuilder, ContextBuilder, dpi::LogicalSize};
 
 use std::error::Error;
 use std::fmt::{Display, Formatter, Error as FmtError};
-use std::collections::HashMap;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 mod monitor;
 pub use self::monitor::*;
@@ -16,7 +16,7 @@ pub use self::monitor::*;
 mod config;
 pub use self::config::*;
 
-use ::{Point, Size, input::{Input, Cursor}};
+use ::{Point, Size, input::Input};
 
 /// Possible errors that can occur from creating a window.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -42,9 +42,8 @@ impl Error for WindowError {}
 /// A window that handles the context and state of the game.
 pub struct Window {
 	events: EventsLoop,
-	window: GlWindow,
-	input: Input,
-	cursor: Cursor
+	window: Rc<GlWindow>,
+	input: Input
 }
 
 impl Window {
@@ -112,19 +111,16 @@ impl Window {
 				.map_err(|error| WindowError::InternalError(ToString::to_string(&error)))?;
 		}
 
-		let cursor = Cursor {
-			point: Point::default(),
-			hidden: false
-		};
-
+		let rc = Rc::new(window);
 		Ok(Window {
 			events,
-			window,
+			window: Rc::clone(&rc),
 			input: Input {
-				keys: HashMap::new(),
-				cursor: cursor.clone()
-			},
-			cursor: cursor.clone()
+				window: Rc::clone(&rc),
+				keys: HashSet::new(),
+				buttons: HashSet::new(),
+				cursor: Point::default()
+			}
 		})
 	}
 
@@ -134,19 +130,6 @@ impl Window {
 	pub fn update(&mut self) -> Result<bool, String> {
 		let input = &mut self.input;
 
-		if input.cursor.point != self.cursor.point {
-			self.window.set_cursor_position(LogicalPosition {
-				x: input.cursor.point.x,
-				y: input.cursor.point.y
-			})?;
-			self.cursor.point = input.cursor.point;
-		}
-
-		if input.cursor.hidden != self.cursor.hidden {
-			self.window.hide_cursor(input.cursor.hidden);
-			self.cursor.hidden = input.cursor.hidden;
-		}
-
 		let mut result = true;
 		self.events.poll_events(|event| {
 			if let Event::WindowEvent {event, ..} = event {
@@ -154,11 +137,20 @@ impl Window {
 					WindowEvent::CloseRequested => result = false,
 					WindowEvent::KeyboardInput {input: event, ..} => {
 						if let Some(key) = event.virtual_keycode {
-							input.keys.insert(key, event.state == ElementState::Pressed);
+							match event.state {
+								ElementState::Pressed => input.keys.insert(key),
+								ElementState::Released => input.keys.remove(&key)
+							};
 						}
 					},
+					WindowEvent::MouseInput {button, state, ..} => {
+						match state {
+							ElementState::Pressed => input.buttons.insert(button),
+							ElementState::Released => input.buttons.remove(&button)
+						};
+					},
 					WindowEvent::CursorMoved {position, ..} => {
-						input.cursor.point = Point {
+						input.cursor = Point {
 							x: position.x,
 							y: position.y
 						}
@@ -186,13 +178,14 @@ impl Window {
 
 	/// Gets the current size of the window.
 	pub fn get_size(&self) -> Size {
-		self.window.get_inner_size().map_or(Size {
-			width: 1.0,
-			height: 1.0
-		}, |size| Size {
-			width: size.width,
-			height: size.height
-		})
+		self.window.get_inner_size()
+			.map_or(Size {
+				width: 1.0,
+				height: 1.0
+			}, |size| Size {
+				width: size.width,
+				height: size.height
+			})
 	}
 
 	pub fn input(&mut self) -> &mut Input {

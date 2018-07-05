@@ -1,36 +1,59 @@
-extern crate glutin;
-pub use self::glutin::VirtualKeyCode as Key;
+//! Manages keyboard and mouse input
+//! and the cursor.
 
-use std::collections::HashMap;
+extern crate glutin;
+pub use self::glutin::{VirtualKeyCode as Key, MouseButton as Button};
+use self::glutin::{GlWindow, dpi::LogicalPosition};
+
+use std::collections::HashSet;
+use std::rc::Rc;
 
 use ::Point;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub(crate) struct Cursor {
-	pub point: Point,
-	pub hidden: bool
-}
-
-#[derive(Clone, Debug)]
+/// Contains all input related methods and data.
 pub struct Input {
-	pub(crate) keys: HashMap<Key, bool>,
-	pub(crate) cursor: Cursor
+	pub(crate) window: Rc<GlWindow>,
+	pub(crate) keys: HashSet<Key>,
+	pub(crate) buttons: HashSet<Button>,
+	pub(crate) cursor: Point
 }
 
 impl Input {
+	/// Gets the current state of the keyboard key.
+	/// Returns true if the key is pressed,
+	/// false otherwise.
 	pub fn get_key_state(&self, key: Key) -> bool {
-		*self.keys.get(&key).unwrap_or(&false)
+		self.keys.contains(&key)
 	}
 
+	/// Gets the current state of the mouse button.
+	/// Returns true if the key is pressed,
+	/// false otherwise.
+	pub fn get_button_state(&self, button: Button) -> bool {
+		self.buttons.contains(&button)
+	}
+
+	/// Gets the current position of the cursor.
 	pub fn get_cursor_point(&self) -> Point {
-		self.cursor.point
+		self.cursor
 	}
 
-	pub fn set_cursor_point(&mut self, point: Point) {
-		self.cursor.point = point
+	/// Sets the current position of the cursor.
+	/// # Errors
+	/// If an internal error occurs,
+	/// it will be returned as a sting.
+	pub fn set_cursor_point(&mut self, point: Point) -> Result<(), String> {
+		self.window.set_cursor_position(LogicalPosition {
+			x: point.x,
+			y: point.y
+		})?;
+		self.cursor = point;
+		Ok(())
 	}
 
+	/// Sets the cursor as hidden
+	/// or visible.
 	pub fn set_cursor_hidden(&mut self, hidden: bool) {
-		self.cursor.hidden = hidden
+		self.window.hide_cursor(hidden);
 	}
 }
