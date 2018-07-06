@@ -1,5 +1,6 @@
 pub mod core;
 pub mod input;
+pub mod graphics;
 
 /// A simple struct that represents the size of an object.
 #[derive(Copy, Clone, Debug, PartialEq, Default)]

@@ -5,8 +5,17 @@ use self::glutin::{EventsLoop, Event, WindowEvent, ElementState};
 use self::glutin::{GlWindow, GlContext, GlRequest, Api};
 use self::glutin::{WindowBuilder, ContextBuilder, dpi::LogicalSize};
 
-use std::error::Error;
-use std::fmt::{Display, Formatter, Error as FmtError};
+extern crate backtrace;
+use self::backtrace::Backtrace;
+
+extern crate msgbox;
+use self::msgbox::IconType;
+
+use std::fmt::{Display, Formatter, Error};
+use std::panic;
+use std::boxed::Box;
+use std::fs::File;
+use std::io::Write;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -19,25 +28,24 @@ pub use self::config::*;
 use ::{Point, Size, input::Input};
 
 /// Possible errors that can occur from creating a window.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum WindowError {
 	/// [`Fullscreen::Monitor`](enum.Fullscreen.html#variant.Monitor)
 	/// didn't match any monitor name.
-	UnknownMonitor,
+	UnknownMonitor(Backtrace),
 
 	/// An unknown internal error occurred.
-	InternalError(String)
+	InternalError(String, Backtrace)
 }
 
 impl Display for WindowError {
-	fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
+	fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
 		match self {
-			&WindowError::UnknownMonitor => write!(f, "Unknown monitor"),
-			&WindowError::InternalError(ref error) => write!(f, "{}", error)
+			&WindowError::UnknownMonitor(..) => write!(f, "Unknown monitor"),
+			&WindowError::InternalError(ref error, ..) => write!(f, "{}", error)
 		}
 	}
 }
-impl Error for WindowError {}
 
 /// A window that handles the context and state of the game.
 pub struct Window {
@@ -53,6 +61,17 @@ impl Window {
 	/// and it doesn't match any monitor name, this will return with
 	/// [`WindowError::UnknownMonitor`](enum.WindowError.html#variant.UnknownMonitor).
 	pub fn new(config: Config) -> Result<Window, WindowError> {
+		panic::set_hook(Box::new(|panic| {
+			let mut error = "Could not create panic.log";
+			if let Ok(mut file) = File::create("panic.log") {
+				if write!(&mut file, "{}\n{:?}", panic, Backtrace::new()).is_ok() {
+					error = "See panic.log for details";
+				}
+			}
+
+			msgbox::create("Panic!", error, IconType::ERROR);
+		}));
+
 		let events = EventsLoop::new();
 		let mut window = WindowBuilder::new()
 			.with_title(config.title)
@@ -86,7 +105,7 @@ impl Window {
 			Fullscreen::Disabled => None,
 			Fullscreen::Primary => Some(events.get_primary_monitor()),
 			Fullscreen::Monitor(name) => {
-				let mut result = Err(WindowError::UnknownMonitor);
+				let mut result = Err(WindowError::UnknownMonitor(Backtrace::new()));
 				for monitor in events.get_available_monitors() {
 					if let Some(n) = monitor.get_name() {
 						if name == n {
@@ -104,11 +123,11 @@ impl Window {
 			.with_multisampling(config.msaa);
 
 		let window = GlWindow::new(window, context, &events)
-			.map_err(|error| WindowError::InternalError(ToString::to_string(&error)))?;
+			.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()))?;
 
 		unsafe {
 			window.make_current()
-				.map_err(|error| WindowError::InternalError(ToString::to_string(&error)))?;
+				.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()))?;
 		}
 
 		let rc = Rc::new(window);
@@ -127,7 +146,7 @@ impl Window {
 	/// Updates the window and processes all events.
 	/// Will return false if the window has been closed,
 	/// true otherwise.
-	pub fn update(&mut self) -> Result<bool, String> {
+	pub fn update(&mut self) -> bool {
 		let input = &mut self.input;
 
 		let mut result = true;
@@ -159,7 +178,7 @@ impl Window {
 				}
 			}
 		});
-		Ok(result)
+		result
 	}
 
 	/// Gets the primary monitor.

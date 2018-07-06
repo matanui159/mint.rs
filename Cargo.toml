@@ -18,3 +18,6 @@ gl_generator = "0.9.0"
 
 [dependencies]
 glutin = "0.17.0"
+
+msgbox = "0.1.0"
+backtrace = "0.3.0"
