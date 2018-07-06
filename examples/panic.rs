@@ -1,6 +1,10 @@
 extern crate mint2d;
 
 use mint2d::core::{Window, Config, Fullscreen};
+use mint2d::input::InputError;
+
+extern crate backtrace;
+use backtrace::Backtrace;
 
 fn main() {
 	let mut config = Config::default();

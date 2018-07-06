@@ -8,5 +8,5 @@ fn main() {
 
 	let mut window = Window::new(config).unwrap();
 
-	while window.update() {}
+	while window.update().unwrap() {}
 }

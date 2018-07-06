@@ -11,23 +11,24 @@ use self::backtrace::Backtrace;
 extern crate msgbox;
 use self::msgbox::IconType;
 
-use std::fmt::{Display, Formatter, Error};
-use std::panic;
-use std::boxed::Box;
-use std::fs::File;
-use std::io::Write;
-use std::collections::HashSet;
-use std::rc::Rc;
-
 mod monitor;
 pub use self::monitor::*;
 
 mod config;
 pub use self::config::*;
 
-use ::{Point, Size, input::Input};
+use ::{Point, Size};
+use ::input::Input;
+use ::graphics::Graphics;
 
-/// Possible errors that can occur from creating a window.
+use std::fmt::{Display, Formatter, Error};
+use std::panic;
+use std::boxed::Box;
+use std::fs::File;
+use std::io::Write;
+use std::rc::Rc;
+
+/// Possible errors that can occur from certain window methods.
 #[derive(Clone, Debug)]
 pub enum WindowError {
 	/// [`Fullscreen::Monitor`](enum.Fullscreen.html#variant.Monitor)
@@ -51,7 +52,8 @@ impl Display for WindowError {
 pub struct Window {
 	events: EventsLoop,
 	window: Rc<GlWindow>,
-	input: Input
+	input: Input,
+	graphics: Graphics
 }
 
 impl Window {
@@ -123,7 +125,8 @@ impl Window {
 			.with_multisampling(config.msaa);
 
 		let window = GlWindow::new(window, context, &events)
-			.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()))?;
+			.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()
+			))?;
 
 		unsafe {
 			window.make_current()
@@ -134,19 +137,16 @@ impl Window {
 		Ok(Window {
 			events,
 			window: Rc::clone(&rc),
-			input: Input {
-				window: Rc::clone(&rc),
-				keys: HashSet::new(),
-				buttons: HashSet::new(),
-				cursor: Point::default()
-			}
+			input: Input::new(Rc::clone(&rc)),
+			graphics: Graphics::new(Rc::clone(&rc))
 		})
 	}
 
 	/// Updates the window and processes all events.
 	/// Will return false if the window has been closed,
 	/// true otherwise.
-	pub fn update(&mut self) -> bool {
+	pub fn update(&mut self) -> Result<bool, WindowError> {
+		self.graphics.update()?;
 		let input = &mut self.input;
 
 		let mut result = true;
@@ -178,7 +178,7 @@ impl Window {
 				}
 			}
 		});
-		result
+		Ok(result)
 	}
 
 	/// Gets the primary monitor.

@@ -8,22 +8,48 @@ use self::glutin::{GlWindow, dpi::LogicalPosition};
 extern crate backtrace;
 use self::backtrace::Backtrace;
 
+use ::Point;
+
+use std::fmt::{Display, Formatter, Error};
+use std::ops::Deref;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-use ::Point;
+/// Internal error from certain input related actions.
+#[derive(Clone, Debug)]
+pub struct InputError(pub String, pub Backtrace);
 
-pub struct InputError(String, Backtrace);
+impl Display for InputError {
+	fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+		write!(f, "{}", self.0)
+	}
+}
+
+impl Deref for InputError {
+	type Target = String;
+	fn deref(&self) -> &String {
+		&self.0
+	}
+}
 
 /// Contains all input related methods and data.
 pub struct Input {
-	pub(crate) window: Rc<GlWindow>,
+	window: Rc<GlWindow>,
 	pub(crate) keys: HashSet<Key>,
 	pub(crate) buttons: HashSet<Button>,
 	pub(crate) cursor: Point
 }
 
 impl Input {
+	pub(crate) fn new(window: Rc<GlWindow>) -> Input {
+		Input {
+			window,
+			keys: HashSet::new(),
+			buttons: HashSet::new(),
+			cursor: Point::default()
+		}
+	}
+
 	/// Gets the current state of the keyboard key.
 	/// Returns true if the key is pressed,
 	/// false otherwise.
@@ -44,9 +70,6 @@ impl Input {
 	}
 
 	/// Sets the current position of the cursor.
-	/// # Errors
-	/// If an internal error occurs,
-	/// it will be returned as a sting.
 	pub fn set_cursor_point(&mut self, point: Point) -> Result<(), InputError> {
 		self.window.set_cursor_position(LogicalPosition {
 			x: point.x,
