@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate memoffset;
+
 pub mod core;
 pub mod input;
 pub mod graphics;

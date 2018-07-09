@@ -8,6 +8,7 @@ use self::backtrace::Backtrace;
 
 mod gl;
 use self::gl::{Gl, CheckError};
+use self::gl::types::*;
 
 mod state;
 pub use self::state::{Color, Angle};
@@ -18,8 +19,13 @@ use ::core::WindowError;
 
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::mem;
+use std::ptr;
+
+const BUFFER_SIZE: usize = 4;
 
 /// Possible errors that can occur from push/pop operations.
+#[derive(Clone, Debug)]
 pub enum StackError {
 	/// There was nothing on the stack when
 	/// [`Graphics.pop`](struct.Graphics.html#method.pop)
@@ -27,10 +33,135 @@ pub enum StackError {
 	StackUnderflow(Backtrace)
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+struct Point32 {
+	x: f32,
+	y: f32
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+struct Color8 {
+	red:   u8,
+	green: u8,
+	blue:  u8,
+	alpha: u8
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+struct Vertex {
+	point: Point32,
+	texcoord: Point32,
+	color: Color8
+}
+
 struct GraphicsImpl {
 	window: Rc<GlWindow>,
 	gl: Gl,
-	state: Vec<State>
+	state: Vec<State>,
+	vertex_array: GLuint,
+	elements: GLuint,
+	buffer: GLuint,
+	buffer_data: Vec<Vertex>
+}
+
+impl GraphicsImpl {
+	fn new(window: Rc<GlWindow>) -> GraphicsImpl {
+		unsafe {
+			let gl = Gl::load_with(|name| window.get_proc_address(name) as *const _);
+
+			let mut vertex_array = 0;
+			gl.GenVertexArrays(1, &mut vertex_array);
+			gl.BindVertexArray(vertex_array);
+
+			let mut elements = 0;
+			gl.GenBuffers(1, &mut elements);
+			gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, elements);
+
+			let elements_data = [0u8, 1u8, 2u8, 2u8, 1u8, 3u8];
+			gl.BufferData(
+				gl::ELEMENT_ARRAY_BUFFER,
+				elements_data.len() as GLsizeiptr,
+				elements_data.as_ptr() as *const _,
+				gl::STATIC_DRAW
+			);
+
+			let mut buffer = 0;
+			gl.GenBuffers(1, &mut buffer);
+			gl.BindBuffer(gl::ARRAY_BUFFER, buffer);
+
+			gl.EnableVertexAttribArray(0);
+			gl.EnableVertexAttribArray(1);
+			gl.EnableVertexAttribArray(2);
+
+			let stride = mem::size_of::<Vertex>() as GLsizei;
+			gl.VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, point) as *mut _);
+			gl.VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, texcoord) as *mut _);
+			gl.VertexAttribPointer(2, 4, gl::UNSIGNED_BYTE, gl::TRUE, stride, offset_of!(Vertex, color) as *mut _);
+
+			gl.check_error();
+			GraphicsImpl {
+				window,
+				gl,
+				state: vec![State::default()],
+				vertex_array,
+				elements,
+				buffer,
+				buffer_data: Vec::with_capacity(BUFFER_SIZE)
+			}
+		}
+	}
+
+	fn vertex(&mut self, point: Point, texcoord: Point) {
+		let point = self.state.last().unwrap().transform(point);
+		let color = self.state.last().unwrap().get_color();
+		self.buffer_data.push(Vertex {
+			point: Point32 {
+				x: point.x as f32,
+				y: point.y as f32
+			},
+			texcoord: Point32 {
+				x: texcoord.x as f32,
+				y: texcoord.y as f32
+			},
+			color: Color8 {
+				red:   (color.red   * 255.0) as u8,
+				green: (color.green * 255.0) as u8,
+				blue:  (color.blue  * 255.0) as u8,
+				alpha: (color.alpha * 255.0) as u8
+			}
+		});
+
+		if self.buffer_data.len() == BUFFER_SIZE {
+			self.flush();
+		}
+	}
+
+	fn flush(&mut self) {
+		unsafe {
+			if self.buffer_data.len() > 0 {
+				self.gl.BufferData(
+					gl::ARRAY_BUFFER,
+					(self.buffer_data.len() * mem::size_of::<Vertex>()) as GLsizeiptr,
+					self.buffer_data.as_ptr() as *const _,
+					gl::STREAM_DRAW
+				);
+				// TODO: fix element buffer size
+				self.gl.DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_BYTE, ptr::null());
+				self.gl.check_error();
+				self.buffer_data.clear();
+			}
+		}
+	}
+}
+
+impl Drop for GraphicsImpl {
+	fn drop(&mut self) {
+		unsafe {
+			self.gl.DeleteBuffers(1, &self.buffer);
+			self.gl.DeleteBuffers(1, &self.elements);
+			self.gl.DeleteVertexArrays(1, &self.vertex_array);
+		}
+	}
 }
 
 type RcGraphics = Rc<RefCell<GraphicsImpl>>;
@@ -42,13 +173,8 @@ pub struct Graphics {
 
 impl Graphics {
 	pub(crate) fn new(window: Rc<GlWindow>) -> Graphics {
-		let gl = Gl::load_with(|name| window.get_proc_address(name) as *const _);
 		Graphics {
-			rc: Rc::new(RefCell::new(GraphicsImpl {
-				window,
-				gl,
-				state: vec![State::default()]
-			}))
+			rc: Rc::new(RefCell::new(GraphicsImpl::new(window)))
 		}
 	}
 
@@ -57,7 +183,8 @@ impl Graphics {
 //	}
 
 	pub(crate) fn update(&self) -> Result<(), WindowError> {
-		let graphics = self.rc.borrow();
+		let mut graphics = self.rc.borrow_mut();
+		graphics.flush();
 		graphics.window.swap_buffers()
 			.map_err(|error| WindowError::InternalError(
 				ToString::to_string(&error),

@@ -107,7 +107,7 @@ impl State {
 		self.t1.1 = self.t1.1 * c - self.t1.0 * s;
 	}
 
-	pub fn transform(&mut self, point: Point) -> Point {
+	pub fn transform(&self, point: Point) -> Point {
 		Point {
 			x: self.t0.0 * point.x + self.t0.1 * point.y + self.t0.2,
 			y: self.t1.0 * point.x + self.t1.1 * point.y + self.t1.2
