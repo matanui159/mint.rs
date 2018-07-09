@@ -50,10 +50,10 @@ impl Display for WindowError {
 
 /// A window that handles the context and state of the game.
 pub struct Window {
-	events: EventsLoop,
 	window: Rc<GlWindow>,
 	input: Input,
-	graphics: Graphics
+	graphics: Graphics,
+	events: EventsLoop
 }
 
 impl Window {
