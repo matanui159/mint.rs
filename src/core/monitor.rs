@@ -6,10 +6,14 @@ use ::Size;
 /// A monitor or display.
 #[derive(Clone, Debug)]
 pub struct Monitor {
-	pub(crate) monitor: MonitorId
+	monitor: MonitorId
 }
 
 impl Monitor {
+	pub(crate) fn new(monitor: MonitorId) -> Monitor {
+		Monitor {monitor}
+	}
+
 	/// Gets the name of the monitor.
 	/// This can be used to create a fullscreen window.
 	pub fn get_name(&self) -> String {
@@ -30,7 +34,13 @@ impl Monitor {
 /// An iterator over monitors.
 #[derive(Debug)]
 pub struct MonitorIter {
-	pub(crate) iter: AvailableMonitorsIter
+	iter: AvailableMonitorsIter
+}
+
+impl MonitorIter {
+	pub(crate) fn new(iter: AvailableMonitorsIter) -> MonitorIter {
+		MonitorIter {iter}
+	}
 }
 
 impl Iterator for MonitorIter {

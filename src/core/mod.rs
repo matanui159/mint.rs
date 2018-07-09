@@ -28,7 +28,7 @@ use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
 
-/// Possible errors that can occur from certain window methods.
+/// Possible errors that can occur from window related actions.
 #[derive(Clone, Debug)]
 pub enum WindowError {
 	/// [`Fullscreen::Monitor`](enum.Fullscreen.html#variant.Monitor)
@@ -91,12 +91,7 @@ impl Window {
 			});
 		}
 
-		if !config.resizable {
-			window = window.with_max_dimensions(LogicalSize {
-				width: config.size.width,
-				height: config.size.height
-			})
-		} else if let Some(size) = config.max_size {
+		if let Some(size) = config.max_size {
 			window = window.with_max_dimensions(LogicalSize {
 				width: size.width,
 				height: size.height
@@ -189,16 +184,12 @@ impl Window {
 
 	/// Gets the primary monitor.
 	pub fn get_primary_monitor(&self) -> Monitor {
-		Monitor {
-			monitor: self.events.get_primary_monitor()
-		}
+		Monitor::new(self.events.get_primary_monitor())
 	}
 
 	/// Gets an iterator of all the monitors.
 	pub fn get_all_monitors(&self) -> MonitorIter {
-		MonitorIter {
-			iter: self.events.get_available_monitors()
-		}
+		MonitorIter::new(self.events.get_available_monitors())
 	}
 
 	/// Gets the current size of the window.
@@ -213,10 +204,12 @@ impl Window {
 			})
 	}
 
+	/// Gets the [`Input`](../input/struct.Input.html) struct for the window.
 	pub fn input(&mut self) -> &mut Input {
 		&mut self.input
 	}
 
+	/// Gets the [`Graphics`](../graphics/struct.Graphics.html) struct for the window.
 	pub fn graphics(&mut self) -> &mut Graphics {
 		&mut self.graphics
 	}

@@ -11,24 +11,21 @@ use self::backtrace::Backtrace;
 use ::Point;
 
 use std::fmt::{Display, Formatter, Error};
-use std::ops::Deref;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-/// Internal error from certain input related actions.
+/// Possible errors that can occur from input related actions.
 #[derive(Clone, Debug)]
-pub struct InputError(pub String, pub Backtrace);
+pub enum InputError {
+	/// An unknown internal error occurred.
+	InternalError(String, Backtrace)
+}
 
 impl Display for InputError {
 	fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-		write!(f, "{}", self.0)
-	}
-}
-
-impl Deref for InputError {
-	type Target = String;
-	fn deref(&self) -> &String {
-		&self.0
+		match self {
+			&InputError::InternalError(ref error, ..) => write!(f, "{}", error)
+		}
 	}
 }
 
@@ -74,7 +71,10 @@ impl Input {
 		self.window.set_cursor_position(LogicalPosition {
 			x: point.x,
 			y: point.y
-		}).map_err(|error| InputError(error, Backtrace::new()))?;
+		}).map_err(|error| InputError::InternalError(
+			error,
+			Backtrace::new()
+		))?;
 		self.cursor = point;
 		Ok(())
 	}
