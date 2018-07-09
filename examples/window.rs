@@ -7,6 +7,5 @@ fn main() {
 	config.title = String::from("Hello, World!");
 
 	let mut window = Window::new(config).unwrap();
-
 	while window.update().unwrap() {}
 }

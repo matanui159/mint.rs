@@ -112,6 +112,7 @@ impl Window {
 					if let Some(n) = monitor.get_name() {
 						if name == n {
 							result = Ok(monitor);
+							break;
 						}
 					}
 				}
@@ -125,12 +126,17 @@ impl Window {
 			.with_multisampling(config.msaa);
 
 		let window = GlWindow::new(window, context, &events)
-			.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()
+			.map_err(|error| WindowError::InternalError(
+				ToString::to_string(&error),
+				Backtrace::new()
 			))?;
 
 		unsafe {
 			window.make_current()
-				.map_err(|error| WindowError::InternalError(ToString::to_string(&error), Backtrace::new()))?;
+				.map_err(|error| WindowError::InternalError(
+					ToString::to_string(&error),
+					Backtrace::new()
+				))?;
 		}
 
 		let rc = Rc::new(window);
@@ -209,5 +215,9 @@ impl Window {
 
 	pub fn input(&mut self) -> &mut Input {
 		&mut self.input
+	}
+
+	pub fn graphics(&mut self) -> &mut Graphics {
+		&mut self.graphics
 	}
 }

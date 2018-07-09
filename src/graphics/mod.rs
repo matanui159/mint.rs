@@ -5,8 +5,10 @@ extern crate backtrace;
 use self::backtrace::Backtrace;
 
 mod gl;
-//use self::gl::types::*;
 use self::gl::{Gl, CheckError};
+
+mod state;
+pub use self::state::{Angle, Color};
 
 use ::core::WindowError;
 
