@@ -41,6 +41,7 @@ use std::boxed::Box;
 use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Possible errors that can occur from window related actions.
 #[derive(Clone, Debug)]
@@ -62,12 +63,24 @@ impl Display for WindowError {
 	}
 }
 
+pub(crate) struct WindowImpl {
+	pub window: GlWindow,
+	pub events: EventsLoop
+}
+
+impl WindowImpl {
+	fn new(window: GlWindow, events: EventsLoop) -> WindowImpl {
+		WindowImpl {window, events}
+	}
+}
+
+pub(crate) type RcWindow = Rc<RefCell<WindowImpl>>;
+
 /// A window that handles the context and state of the game.
 pub struct Window {
-	window: Rc<GlWindow>,
+	rc: RcWindow,
 	input: Input,
-	graphics: Graphics,
-	events: EventsLoop
+	graphics: Graphics
 }
 
 impl Window {
@@ -148,10 +161,9 @@ impl Window {
 				))?;
 		}
 
-		let rc = Rc::new(window);
+		let rc = Rc::new(RefCell::new(WindowImpl::new(window, events)));
 		Ok(Window {
-			events,
-			window: Rc::clone(&rc),
+			rc: Rc::clone(&rc),
 			input: Input::new(Rc::clone(&rc)),
 			graphics: Graphics::new(Rc::clone(&rc))
 		})
@@ -165,7 +177,7 @@ impl Window {
 		let input = &mut self.input;
 
 		let mut result = true;
-		self.events.poll_events(|event| {
+		self.rc.borrow_mut().events.poll_events(|event| {
 			if let Event::WindowEvent {event, ..} = event {
 				match event {
 					WindowEvent::CloseRequested => result = false,
@@ -198,17 +210,17 @@ impl Window {
 
 	/// Gets the primary monitor.
 	pub fn get_primary_monitor(&self) -> Monitor {
-		Monitor::new(self.events.get_primary_monitor())
+		Monitor::new(self.rc.borrow().events.get_primary_monitor())
 	}
 
 	/// Gets an iterator of all the monitors.
 	pub fn get_all_monitors(&self) -> MonitorIter {
-		MonitorIter::new(self.events.get_available_monitors())
+		MonitorIter::new(self.rc.borrow().events.get_available_monitors())
 	}
 
 	/// Gets the current size of the window.
 	pub fn get_size(&self) -> Size {
-		self.window.get_inner_size()
+		self.rc.borrow().window.get_inner_size()
 			.map_or(Size {
 				width: 1.0,
 				height: 1.0

@@ -15,7 +15,7 @@
 //! Manages all the drawing and graphics.
 
 extern crate glutin;
-use self::glutin::{GlWindow, GlContext};
+use self::glutin::GlContext;
 
 extern crate backtrace;
 use self::backtrace::Backtrace;
@@ -29,7 +29,7 @@ pub use self::state::{Color, Angle};
 use self::state::State;
 
 use ::{Size, Point};
-use ::core::WindowError;
+use ::core::{RcWindow, WindowError};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -69,7 +69,7 @@ struct Vertex {
 }
 
 struct GraphicsImpl {
-	window: Rc<GlWindow>,
+	window: RcWindow,
 	gl: Gl,
 	state: Vec<State>,
 	vertex_array: GLuint,
@@ -79,9 +79,12 @@ struct GraphicsImpl {
 }
 
 impl GraphicsImpl {
-	fn new(window: Rc<GlWindow>) -> GraphicsImpl {
+	fn new(window: RcWindow) -> GraphicsImpl {
 		unsafe {
-			let gl = Gl::load_with(|name| window.get_proc_address(name) as *const _);
+			let gl = {
+				let context = &window.borrow().window;
+				Gl::load_with(|name| context.get_proc_address(name) as *const _)
+			};
 
 			let mut vertex_array = 0;
 			gl.GenVertexArrays(1, &mut vertex_array);
@@ -186,7 +189,7 @@ pub struct Graphics {
 }
 
 impl Graphics {
-	pub(crate) fn new(window: Rc<GlWindow>) -> Graphics {
+	pub(crate) fn new(window: RcWindow) -> Graphics {
 		Graphics {
 			rc: Rc::new(RefCell::new(GraphicsImpl::new(window)))
 		}
@@ -199,7 +202,7 @@ impl Graphics {
 	pub(crate) fn update(&self) -> Result<(), WindowError> {
 		let mut graphics = self.rc.borrow_mut();
 		graphics.flush();
-		graphics.window.swap_buffers()
+		graphics.window.borrow().window.swap_buffers()
 			.map_err(|error| WindowError::InternalError(
 				ToString::to_string(&error),
 				Backtrace::new()

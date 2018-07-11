@@ -3,16 +3,16 @@
 
 extern crate glutin;
 pub use self::glutin::{VirtualKeyCode as Key, MouseButton as Button};
-use self::glutin::{GlWindow, dpi::LogicalPosition};
+use self::glutin::dpi::LogicalPosition;
 
 extern crate backtrace;
 use self::backtrace::Backtrace;
 
 use ::Point;
+use ::core::RcWindow;
 
 use std::fmt::{Display, Formatter, Error};
 use std::collections::HashSet;
-use std::rc::Rc;
 
 /// Possible errors that can occur from input related actions.
 #[derive(Clone, Debug)]
@@ -31,14 +31,14 @@ impl Display for InputError {
 
 /// Contains all input related methods and data.
 pub struct Input {
-	window: Rc<GlWindow>,
+	window: RcWindow,
 	pub(crate) keys: HashSet<Key>,
 	pub(crate) buttons: HashSet<Button>,
 	pub(crate) cursor: Point
 }
 
 impl Input {
-	pub(crate) fn new(window: Rc<GlWindow>) -> Input {
+	pub(crate) fn new(window: RcWindow) -> Input {
 		Input {
 			window,
 			keys: HashSet::new(),
@@ -68,7 +68,7 @@ impl Input {
 
 	/// Sets the current position of the cursor.
 	pub fn set_cursor_point(&mut self, point: Point) -> Result<(), InputError> {
-		self.window.set_cursor_position(LogicalPosition {
+		self.window.borrow().window.set_cursor_position(LogicalPosition {
 			x: point.x,
 			y: point.y
 		}).map_err(|error| InputError::InternalError(
@@ -82,6 +82,6 @@ impl Input {
 	/// Sets the cursor as hidden
 	/// or visible.
 	pub fn set_cursor_hidden(&mut self, hidden: bool) {
-		self.window.hide_cursor(hidden);
+		self.window.borrow().window.hide_cursor(hidden);
 	}
 }
