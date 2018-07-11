@@ -21,8 +21,7 @@ extern crate backtrace;
 use self::backtrace::Backtrace;
 
 mod gl;
-use self::gl::{Gl, CheckError};
-use self::gl::types::*;
+use self::gl::{Gl, CheckError, types::*};
 
 mod state;
 pub use self::state::{Color, Angle};
@@ -111,9 +110,9 @@ impl GraphicsImpl {
 			gl.EnableVertexAttribArray(2);
 
 			let stride = mem::size_of::<Vertex>() as GLsizei;
-			gl.VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, point) as *mut _);
-			gl.VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, texcoord) as *mut _);
-			gl.VertexAttribPointer(2, 4, gl::UNSIGNED_BYTE, gl::TRUE, stride, offset_of!(Vertex, color) as *mut _);
+			gl.VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, point) as *const _);
+			gl.VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, offset_of!(Vertex, texcoord) as *const _);
+			gl.VertexAttribPointer(2, 4, gl::UNSIGNED_BYTE, gl::TRUE, stride, offset_of!(Vertex, color) as *const _);
 
 			gl.check_error();
 			GraphicsImpl {
